@@ -1,0 +1,42 @@
+#!/bin/bash
+#
+# This script does a restart
+# Author:: Michael Chan <mchan@citytechinc.com>
+#
+# Copyright 2013, CITYTECH, Inc.
+#
+
+SSHD_SERVICE=ssh
+
+LSB_RELEASE=`lsb_release -i`
+if [ "$?" -eq "0" ]; then
+	OS_VERSION=`echo $LSB_RELEASE | cut -d' ' -f3`
+
+	shopt -s nocasematch
+	[[ $OS_VERSION =~ redhat ]] || [[ $OS_VERSION =~ centos ]] && SSHD_SERVICE=sshd
+fi
+
+# restart sshd - the purpose of this script
+echo "restarting SSHD in the background... service name: $SSHD_SERVICE"
+nohup service $SSHD_SERVICE restart &
+
+tries=0
+
+# start a for loop to ensure that sshd truly was restarted correctly
+while [ "$tries" -lt "10" ]; do
+	sleep 30 
+	tries=$[$tries+1]
+
+	ps -C sshd >/dev/null 2>&1
+
+	# if no sshd binary is started up, then start it!
+	if [ "$?" -ne "0" ]; then
+		echo "sshd did not start up correctly, attempting a restart!"
+		service ssh start
+
+	else
+		echo "sshd has started up correctly, no need to startup manually."
+		break
+	fi
+done
+
